@@ -14,6 +14,7 @@ extern void error(int64_t val) asm("error");
 
 int64_t print(int64_t val) {
   // FILL IN YOUR CODE FROM HERE
+  printf("%lld is the val\n", val);
 }
 
 void error(int64_t error_code) {
@@ -28,5 +29,6 @@ int main(int argc, char** argv) {
   // YOUR CODE ENDS HERE
   int64_t result = our_code_starts_here(input_val);
   print(result);
+  //printf("after print before main.c rets 0\n");
   return 0;
 }

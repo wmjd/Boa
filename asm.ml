@@ -73,9 +73,7 @@ let rec arg_to_asm (a : arg) : string =
     | Const64(n) -> sprintf "%Ld" n
     | HexConst(n) -> sprintf "%#Lx" n
     | Reg(r) -> r_to_asm r
-    | RegOffset(n, r) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+    | RegOffset(n, r) -> sprintf "[%s + %d]" (r_to_asm r) n
     | Sized(s, a) ->
       (s_to_asm s) ^ " " ^ (arg_to_asm a)
 
