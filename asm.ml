@@ -90,31 +90,23 @@ let i_to_asm (i : instruction) : string =
     | IAnd(dest, mask) ->
       sprintf "  and %s, %s" (arg_to_asm dest) (arg_to_asm mask)
     | IOr(dest, mask) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  or %s, %s" (arg_to_asm dest) (arg_to_asm mask)
     | IXor(dest, mask) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  xor %s, %s" (arg_to_asm dest) (arg_to_asm mask)
     | IShr(dest, to_shift) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  shr %s, %s" (arg_to_asm dest) (arg_to_asm to_shift)
     | ISar(dest, to_shift) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  sar %s, %s" (arg_to_asm dest) (arg_to_asm to_shift)
     | IShl(dest, to_shift) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  shl %s, %s" (arg_to_asm dest) (arg_to_asm to_shift)
     | ICmp(left, right) ->
       sprintf "  cmp %s, %s" (arg_to_asm left) (arg_to_asm right)
     | IPush(arg) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  push %s" (arg_to_asm arg)
     | IPop(arg) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  pop %s" (arg_to_asm arg)
     | ICall(str) ->
-      (* TODO *)
-      failwith "Not yet implemented"
+      sprintf "  call %s" str
     | ILabel(name) ->
       name ^ ":"
     | IJne(label) ->
