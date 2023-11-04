@@ -14,7 +14,16 @@ extern void error(int64_t val) asm("error");
 
 int64_t print(int64_t val) {
   // FILL IN YOUR CODE FROM HERE
-  printf("%lld is the val\n", val);
+  if(val & 1){
+    printf("%lld\n", (val - 1) / 2);
+  }
+  else if(val == TRUE){
+    printf("true\n");
+  }
+  else if(val == FALSE){
+    printf("false\n");
+  } 
+  return val;
 }
 
 void error(int64_t error_code) {
@@ -24,6 +33,9 @@ void error(int64_t error_code) {
 int main(int argc, char** argv) {
   int64_t input_val;
   // FILL IN YOUR CODE FROM HERE
+  if (argc == 2) {
+    input_val = atoi(argv[1]);
+  }
 
 
   // YOUR CODE ENDS HERE

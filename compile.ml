@@ -36,6 +36,9 @@ let rec well_formed_e (e : expr) (env : (string * int) list) : string list =
     match find env x with
     | None -> ["Variable identifier " ^ x ^ " unbound"] 
     | Some(_) -> [] )
+  | EIf(predicate, if_branch, else_branch) -> (well_formed_e predicate env) @ (well_formed_e if_branch env) @ (well_formed_e else_branch env)
+  | EPrim1(_ as op, arg1) -> (well_formed_e arg1 env)
+  | EPrim2(_ as op, arg1, arg2) -> (well_formed_e arg1 env) @ (well_formed_e arg2 env)
 
  (* TODO *)  
   | _ -> failwith "Not yet implemented: well_formed_e"
@@ -53,11 +56,15 @@ let rec compile_expr (e : expr) (si : int) (env : (string * int) list) : instruc
     let vis, ext_env = compile_binding binding si env in
 	let bis = compile_expr body (si + List.length binding) ext_env in
 	vis @ bis
-  | ENumber(i) -> [IMov(Reg RAX, Const i)]
+  | ENumber(i) -> [IMov(Reg RAX, Const64 (Int64.add (Int64.mul i 2L) 1L) )]
+  | EBool(true) -> [IMov(Reg RAX, true_const)]
+  | EBool(false) -> [IMov(Reg RAX, false_const)]
   | EId(x) -> (
     match find env x with
     | None -> failwith ("compile_expr: Unbound variable identifier " ^ x) (* this should be caught before compilation in check and should never execute here *)
     | Some(i) -> [IMov(Reg RAX, stackloc i)] )
+  | EIf(predicate, if_branch, else_branch) -> failwith "Not yet implemented: EIf"
+
 
 (* Tail Recursive implementation needs to *reverse* the instruction list as usual trick. 
 In this case, it is a little tricky because ins is built hierarchically in sections and subsections which must remain ordered *)
@@ -73,11 +80,23 @@ and compile_binding b si env =
 
 and compile_prim1 op e si env =
   (* TODO *)
-  failwith "Not yet implemented: compile_prim1"
+  match op with
+  | Add1
+  | Sub1
+  | IsNum
+  | IsBool
+  | _ -> failwith "Not yet implemented: compile_prim1"
 
 and compile_prim2 op e1 e2 si env =
   (* TODO *)
-  failwith "Not yet implemented: compile_prim2"
+  match op with
+  | Plus
+  | Minus
+  | Times
+  | Less
+  | Greater
+  | Equal 
+  | _ -> failwith "Not yet implemented: compile_prim2"
 
 let compile_to_string prog =
   let _ = check prog in
