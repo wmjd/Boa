@@ -9,6 +9,24 @@ let rec find ls x =
     if y = x then Some(v) else find rest x
 
 let stackloc si = RegOffset(-8 * si, RSP)
+let throw_err code = [IMov(Reg(RDI), Const(code));
+                      ICall("error");]
+let check_overflow = IJo("overflow_check")
+let error_non_int = "error_non_int"
+let error_non_bool = "error_non_bool"
+
+let check_num = [IAnd(Reg(RAX), Const(1));
+                 ICmp(Reg(RAX), Const(1));
+                 IJne(error_non_int);]
+
+
+(* Assume arg1 is a register *)
+let check_nums arg1 arg2 =
+  [IAnd(arg1, arg2);
+   IAnd(arg1, Const(1));
+   ICmp(arg1, Const(1));
+   IJne(error_non_int);]
+
 
 let true_const  = HexConst(0x0000000000000002L)
 let false_const = HexConst(0x0000000000000000L)
@@ -63,8 +81,27 @@ let rec compile_expr (e : expr) (si : int) (env : (string * int) list) : instruc
     match find env x with
     | None -> failwith ("compile_expr: Unbound variable identifier " ^ x) (* this should be caught before compilation in check and should never execute here *)
     | Some(i) -> [IMov(Reg RAX, stackloc i)] )
-  | EIf(predicate, if_branch, else_branch) -> failwith "Not yet implemented: EIf"
-
+  | EIf(predicate, then_expr,else_expr) ->
+    let test_bool =
+      [ IMov(stackloc si, Reg(RAX));
+        IAnd(Reg(RAX), Const(1));
+        ICmp(Reg(RAX), Const(0));
+        IJne(error_non_bool);
+        IMov(Reg(RAX), stackloc si);] in
+    let pred = compile_expr predicate si env in
+    let then_branch = compile_expr then_expr si env in
+    let else_branch = compile_expr else_expr si env in
+    let else_label = gen_temp "else" in
+    let end_label = gen_temp "end_if" in
+    pred @
+    test_bool @
+    [ ICmp(Reg(RAX), true_const);
+      IJne(else_label);] @
+    then_branch @
+    [ IJmp(end_label);
+      ILabel(else_label);] @
+    else_branch @
+    [ILabel(end_label)]
 
 (* Tail Recursive implementation needs to *reverse* the instruction list as usual trick. 
 In this case, it is a little tricky because ins is built hierarchically in sections and subsections which must remain ordered *)
@@ -79,13 +116,29 @@ and compile_binding b si env =
   in iter b si env []
 
 and compile_prim1 op e si env =
-  (* TODO *)
-  match op with
-  | Add1
-  | Sub1
-  | IsNum
-  | IsBool
-  | _ -> failwith "Not yet implemented: compile_prim1"
+  let prelude = compile_expr e si env in
+  let instrs = match op with
+    | Add1 ->
+      IMov(stackloc si, Reg(RAX))::
+      check_num @
+      [IMov(Reg(RAX), stackloc si);
+       IAdd(Reg(RAX),Const(2));
+       check_overflow]
+    | Sub1 ->
+      IMov(stackloc si, Reg(RAX))::
+      check_num @
+      [IMov(Reg(RAX), stackloc si);
+       ISub(Reg(RAX),Const(2));
+       check_overflow]
+    | IsNum ->
+       [IAnd(Reg(RAX), Const(1));
+       IShl(Reg(RAX), Const(1))]
+    | IsBool ->
+      [IAnd(Reg(RAX), Const(1));
+       IXor(Reg(RAX), Const(1));
+       IShl(Reg(RAX), Const(1))]
+  in
+  prelude @ instrs
 
 and compile_prim2 op e1 e2 si env =
   (* TODO *)
@@ -106,7 +159,9 @@ let compile_to_string prog =
                 "our_code_starts_here:\n" ^
                 "  mov [rsp - 8], rdi\n" in
   let postlude = [IRet]
-    (* TODO *) in
+                 @ [ILabel("overflow_check")] @ (throw_err 3)
+                 @ [ILabel(error_non_int)] @ (throw_err 1)
+                 @ [ILabel(error_non_bool)] @ (throw_err 2) in
   let compiled = (compile_expr prog 2 [("input", 1)]) in
   let as_assembly_string = (to_asm (compiled @ postlude)) in
   sprintf "%s%s\n" prelude as_assembly_string
