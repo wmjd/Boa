@@ -40,7 +40,7 @@ void error(int64_t error_code) {
     fprintf(stderr, "Error: input must be a boolean or a number\n");
   else if (error_code == 5)
     fprintf(stderr, "Error: input is not a representable number\n");
-  exit(123456);
+  exit(1);
 }
 
 
@@ -48,10 +48,28 @@ void error(int64_t error_code) {
 int main(int argc, char** argv) {
   int64_t input_val;
   // FILL IN YOUR CODE FROM HERE
-  if (argc == 2) {
-    input_val = atoi(argv[1]);
-  }
+  char * endptr;
+  extern int errno;
 
+  if (argc > 1) {
+    if (!strcmp("true", argv[1])) {
+      input_val = TRUE;
+    } else if (!strcmp("false", argv[1])) {
+      input_val = FALSE;
+    } else {
+      endptr = (char*) &argv[1];
+      long r = strtol(argv[1], &endptr, 10);
+      if (*endptr != '\0') {
+        error(4);
+      }
+      else if (r < BOA_MIN || r > BOA_MAX) {
+        error(5);
+      }
+      input_val = (r << 1) | 1;
+    }
+  } else {
+    input_val = FALSE;
+  }
 
   // YOUR CODE ENDS HERE
   int64_t result = our_code_starts_here(input_val);

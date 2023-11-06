@@ -30,6 +30,7 @@ let check_nums arg1 arg2 =
 
 let true_const  = HexConst(0x0000000000000002L)
 let false_const = HexConst(0x0000000000000000L)
+let tag_mask =    HexConst(0xFFFFFFFFFFFFFFFEL)
                 
 let rec well_formed_e (e : expr) (env : (string * int) list) : string list =
   let rec ext_env b = 
@@ -141,15 +142,62 @@ and compile_prim1 op e si env =
   prelude @ instrs
 
 and compile_prim2 op e1 e2 si env =
-  (* TODO *)
-  match op with
-  | Plus
-  | Minus
-  | Times
-  | Less
-  | Greater
-  | Equal 
-  | _ -> failwith "Not yet implemented: compile_prim2"
+  let first_op = compile_expr e1 si env in
+  let second_op = compile_expr e2 (si + 1) env in
+  (* assume first arg is in rax, and in stackloc si, and second arg in stackloc si+1 *)
+  let instrs,numr = match op with
+    | Plus ->
+      [IAnd(Reg(RAX), tag_mask);
+       IAdd(Reg(RAX), stackloc (si + 1)); check_overflow],true
+    | Minus ->
+      [IAnd(Reg(RAX), tag_mask);
+       ISub(Reg(RAX), stackloc (si + 1)); check_overflow],true
+    | Times ->
+      [IAnd(Reg(RAX), tag_mask);
+       IMov(stackloc si, Reg(RAX));
+       IMov(Reg(RAX), stackloc (si + 1));
+       ISar(Reg(RAX), Const(1));
+       IMul(Reg(RAX), stackloc si);
+       check_overflow;
+       IAdd(Reg(RAX), Const(1));],true
+    | Less ->
+      let less = gen_temp "less" in
+      let end_label = gen_temp "end" in
+      [ICmp(Reg(RAX),(stackloc (si + 1)));
+       IJl(less);
+       IMov(Reg(RAX), false_const);
+       IJmp(end_label);
+       ILabel(less);
+       IMov(Reg(RAX), true_const);
+       ILabel(end_label);],true
+    | Greater ->
+      let greater = gen_temp "greater" in
+      let end_label = gen_temp "end" in
+      [ICmp(Reg(RAX),(stackloc (si + 1)));
+       IJg(greater);
+       IMov(Reg(RAX), false_const);
+       IJmp(end_label);
+       ILabel(greater);
+       IMov(Reg(RAX), true_const);
+       ILabel(end_label);],true
+    | Equal ->
+      let not_equal = gen_temp "not_equal" in
+      let end_label = gen_temp "end" in
+      [ICmp(Reg(RAX),(stackloc (si + 1)));
+       IJne(not_equal);
+       IMov(Reg(RAX), true_const);
+       IJmp(end_label);
+       ILabel(not_equal);
+       IMov(Reg(RAX), false_const);
+       ILabel(end_label);],false in
+  if numr then
+    first_op @ [IMov((stackloc si),Reg(RAX))] @ second_op @
+    (IMov(stackloc (si + 1), Reg(RAX))::
+     (check_nums (Reg(RAX)) (stackloc si))) @
+    (IMov(Reg(RAX), (stackloc si))::instrs)
+  else
+    first_op @ [IMov((stackloc si),Reg(RAX))] @ second_op @
+    instrs
 
 let compile_to_string prog =
   let _ = check prog in
